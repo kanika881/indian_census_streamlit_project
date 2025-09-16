@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np 
 import plotly.express as px
 import plotly.graph_objects as go
+from PIL import Image
 df=pd.read_csv("india_data.csv")
 list_states=list(df["State name"].unique())
 sorted(list_states)
@@ -12,13 +13,31 @@ st.sidebar.title("please select the options to see the data:")
 selected_state=st.sidebar.selectbox("select a state",list_states)
 list_categroy=["population","Literacry","Caste","Workers","Religion","Basic Neccessties","Citizen Age Group","Vehicles Owned","Household with gadjets","Housing Info","Household size","Water supply","Married","Power Parity"]
 category=st.sidebar.selectbox("please select a category to compare",list_categroy)
+if "show_landing" not in st.session_state:
+    st.session_state.show_landing=True
+if st.session_state.show_landing:
+    st.title("📊 Indian Census Data Explorer")
+    st.write("Welcome! Use the options on the left sidebar to explore census data by state, category, and parameter. You can view comparisons as graphs or pie charts.")
+    col1,=st.columns([1])
+    with col1:
+        image = Image.open("india.jpg") # Open the image file
+        st.image(image, width=500)
+
 
 if selected_state:
 
     if category=="population":
         sub_category=st.sidebar.selectbox("select One parameter",['Population','Male','Female'])
     elif category=="Literacry":
-        sub_category=st.sidebar.selectbox("select One parameter",['Literate','Male_Literate','Female_Literate'])
+        sub_category=st.sidebar.selectbox("select One parameter",['Literate','Male_Literate','Female_Literate','Below_Primary_Education',
+ 'Primary_Education',
+ 'Middle_Education',
+ 'Secondary_Education',
+ 'Higher_Education',
+ 'Graduate_Education',
+ 'Other_Education',
+ 'Literate_Education',
+ 'Illiterate_Education'])
     elif category=="Caste":
         sub_category=st.sidebar.selectbox("select One parameter",['SC','Male_SC','Female_SC','ST','Male_ST','Female_ST'])
     elif category=="Workers":
@@ -116,10 +135,14 @@ if selected_state:
  'Power_Parity_Above_Rs_545000',
  'Total_Power_Parity'])
         
-        
+if selected_state != "All" or category != "Population" or  sub_category!= "Urban_Households":
+    st.session_state.show_landing = False
+
 button1=st.sidebar.button("plot on graph")
 button2=st.sidebar.button("plot a pie chart")
-
+button3=st.sidebar.button("Home")
+if button3:
+    st.session_state.show_landing = True
 if button1:
     if selected_state=="All":
         
@@ -128,65 +151,81 @@ if button1:
         st.subheader(f"Top 5 districts with highest {sub_category}")
         st.dataframe(data.sort_values(by=sub_category,ascending=False).head())
         
-        fig=px.scatter_mapbox(data,lat="Latitude",lon="Longitude",size=sub_category,color="District name",zoom=3,mapbox_style="open-street-map",width=1000,hover_name="State name")
+        fig=px.scatter_mapbox(data,lat="Latitude",lon="Longitude",size=sub_category,color="District name",zoom=3,mapbox_style="open-street-map",width=1000,hover_name="State name",title=f"Size of marker depends on the count of {sub_category} in each districts")
         st.plotly_chart(fig,use_container_width=True)
+        # st.write(f"****")
     else:
         data=df[df["State name"]==selected_state]
+        data=data[["District code","State name","District name",sub_category,"Latitude","Longitude"]]
         st.subheader(f"Top 5 districts with highest {sub_category}")
         st.dataframe(data.sort_values(by=sub_category,ascending=False).head())
         
         
-        fig=px.scatter_mapbox(data,lat="Latitude",lon="Longitude",size=sub_category,color="District name",zoom=6,mapbox_style="carto-positron",size_max=35,width=1000)
+        fig=px.scatter_mapbox(data,lat="Latitude",lon="Longitude",size=sub_category,color="District name",zoom=6,mapbox_style="carto-positron",size_max=35,width=1000,title=f"Size of marker depends on the count of {sub_category} in {selected_state}'s each district")
         st.plotly_chart(fig,use_container_width=True)
+        # st.write(f"****")
 if button2:
     if selected_state=="All":
         temp=df.groupby(["State name","District name"])[sub_category].sum().reset_index()
 
-        state_level = temp.groupby("State name", as_index=False)[sub_category].sum()
-        state_level["parent"] = ""   # states have no parent
+       
+        col1,col2=st.columns(2)
+     
+        
+        with col2:
+            st.subheader("sunburst graph: with path as states and districts ")
+            state_level = temp.groupby("State name", as_index=False)[sub_category].sum()
+            state_level["parent"] = ""   # states have no parent
 
-        # District-level data
-        district_level = temp.rename(columns={"District name": "label", "State name": "parent"})
-        district_level = district_level[["label", "parent", sub_category]]
+            # District-level data
+            district_level = temp.rename(columns={"District name": "label", "State name": "parent"})
+            district_level = district_level[["label", "parent", sub_category]]
 
-        # Rename state-level columns
-        state_level = state_level.rename(columns={"State name": "label", sub_category: sub_category})
+            # Rename state-level columns
+            state_level = state_level.rename(columns={"State name": "label", sub_category: sub_category})
 
-        # Combine states + districts
-        all_nodes = pd.concat([state_level[["label","parent",sub_category]],
-                            district_level[["label","parent",sub_category]]])
+            # Combine states + districts
+            all_nodes = pd.concat([state_level[["label","parent",sub_category]],
+                                district_level[["label","parent",sub_category]]])
 
-        # Sunburst chart
-        fig = go.Figure(go.Sunburst(
-            labels=all_nodes["label"],
-            parents=all_nodes["parent"],
-            values=all_nodes[sub_category],
-            insidetextorientation='radial',
-            maxdepth=2,
-            marker=dict(
-        colors=temp[sub_category],    # use values as color
-        colorscale="cividis",          # choose scale: Viridis, Blues, Reds, Rainbow etc.
-        showscale=True 
-        )
-            ))
+            # Sunburst chart
+            fig = go.Figure(go.Sunburst(
+                labels=all_nodes["label"],
+                parents=all_nodes["parent"],
+                values=all_nodes[sub_category],
+                insidetextorientation='radial',
+                maxdepth=2,
+                marker=dict(
+            colors=temp[sub_category],    # use values as color
+            colorscale="cividis",          # choose scale: Viridis, Blues, Reds, Rainbow etc.
+            showscale=True 
+            )
+                ))
 
-        fig.update_layout(
-            autosize=False,
-            width=800,
-            height=800,
+            fig.update_layout(
+                autosize=False,
+                width=400,
+                height=400,
+                # text=sub_category,
+                
+                margin = dict(t=0, l=0, r=0, b=0)
+            )
+            st.plotly_chart(fig, use_container_width=True) 
             
-            margin = dict(t=0, l=0, r=0, b=0)
-        )
-        st.plotly_chart(fig, use_container_width=True) 
+        with col1:
+            st.subheader("for better visiblity of each states and their respective districts:")
+            st.markdown("-click and unclick on the states")
+            st.markdown(f"-color on the district closer to color scale shows increase in  {sub_category}")
     else:
         st.title("Data is based on 2011 Census")
         col1,col2=st.columns([1,2])
         data=df[df["State name"]==selected_state][["District code","District name","State name",sub_category,]]
         with col1:
             
-            fig=px.sunburst(data,path=["State name","District name"],values=sub_category,color_discrete_map="vividis")
+            fig=px.sunburst(data,path=["State name","District name"],values=sub_category,color_discrete_map="vividis",title=f"sunburst graph for {sub_category}",subtitle=f"{selected_state.lower()} and its Districts")
             st.plotly_chart(fig, use_container_width=True)
-            st.write(f"showing sunburst graph for **{selected_state.lower()}** and its Districts for parameter **{sub_category}**")
+            # st.write()
+            
         with col2:
             data1=data.sort_values(by=sub_category,ascending=False).head(1)
             data2=data.sort_values(by=sub_category).head(1)
