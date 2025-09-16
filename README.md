@@ -34,5 +34,9 @@ This project combines census data (population, households, basic necessities, et
 - **Streamlit** (web app deployment)  
 
 ---
+## 🚀 Live Demo
+Click the badge below to open the app:  
+
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)]https://kanika881-indian-census-streamlit-project-app-rbsgkc.streamlit.app/)
 
 
