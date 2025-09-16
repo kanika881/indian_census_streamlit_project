@@ -35,9 +35,4 @@ This project combines census data (population, households, basic necessities, et
 
 ---
 
-# ▶️ How to Run Locally
 
-1. Clone the repo:
-   ```bash
-   git clone https://github.com/yourusername/indian-census-visualization.git
-   cd indian-census-visualization
