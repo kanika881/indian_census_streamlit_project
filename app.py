@@ -8,21 +8,26 @@ from PIL import Image
 df=pd.read_csv("india_data.csv")
 list_states=list(df["State name"].unique())
 sorted(list_states)
-list_states.insert(0,"All")
+# list_states.insert(0,"All")
 st.sidebar.title("please select the options to see the data:")
-selected_state=st.sidebar.selectbox("select a state",list_states)
+selected_state=st.sidebar.selectbox("select a state",["ALL","State Vs State","States"])
 list_categroy=["population","Literacry","Caste","Workers","Religion","Basic Neccessties","Citizen Age Group","Vehicles Owned","Household with gadjets","Housing Info","Household size","Water supply","Married","Power Parity"]
-category=st.sidebar.selectbox("please select a category to compare",list_categroy)
+
 if "show_landing" not in st.session_state:
     st.session_state.show_landing=True
 if st.session_state.show_landing:
     st.title("📊 Indian Census Data Explorer")
-    st.write("Welcome! Use the options on the left sidebar to explore census data by state, category, and parameter. You can view comparisons as graphs or pie charts.")
+    st.write("Welcome! Use the options on the left sidebar to explore census data by state, category, and parameter. You can view comparisons as indian maps or pie charts.")
     col1,=st.columns([1])
     with col1:
         image = Image.open("india.jpg") # Open the image file
         st.image(image, width=500)
-
+if selected_state=="State Vs State":
+    selected_options_multiselect=st.sidebar.multiselect("please select more than one states to compare",list_states)
+if selected_state=="States":
+    state_select=st.sidebar.selectbox("please select a state to compare:",list_states)
+if selected_state:
+    category=st.sidebar.selectbox("please select a category to compare",list_categroy)
 
 if selected_state:
 
@@ -122,7 +127,7 @@ if selected_state:
  'Married_couples_5__Households',
  'Married_couples_None_Households'])
     elif category=="Power Parity":
-        sub_category=st.sidebar.multiselect("select two parameter",['Power_Parity_Less_than_Rs_45000',
+        sub_category=st.sidebar.selectbox("select two parameter",['Power_Parity_Less_than_Rs_45000',
  'Power_Parity_Rs_45000_90000',
  'Power_Parity_Rs_90000_150000',
  'Power_Parity_Rs_45000_150000',
@@ -137,35 +142,68 @@ if selected_state:
         
 if selected_state != "All" or category != "Population" or  sub_category!= "Urban_Households":
     st.session_state.show_landing = False
-
-button1=st.sidebar.button("plot on graph")
+button1=st.sidebar.button("plot on map")
 button2=st.sidebar.button("plot a pie chart")
 button3=st.sidebar.button("Home")
+
+if button1:
+    if selected_state=="State Vs State":
+        if selected_options_multiselect:
+            cols=st.columns(len(selected_options_multiselect))
+            
+            for idx,state in enumerate(selected_options_multiselect):
+                with cols[idx]:
+                    data=df[df["State name"]==state]
+                    data=data[["District code","State name","District name",sub_category,"Latitude","Longitude"]]
+                    st.subheader(f"Top 5 districts with highest {sub_category} in {state}")
+                    st.dataframe(data.sort_values(by=sub_category,ascending=False,ignore_index=True)[["State name","District name",sub_category]].head())
+                    fig=px.scatter_mapbox(data,lat="Latitude",lon="Longitude",size=sub_category,color="District name",zoom=6,mapbox_style="carto-positron",size_max=10,width=500,title=f"Size of marker depends on the count of {sub_category} in {state}'s each district")
+                    st.plotly_chart(fig,use_container_width=True)
+            
+if button2:
+    if selected_state=="State Vs State":
+       if selected_options_multiselect:
+           st.subheader("Data is based on 2011 census")
+           cols=st.columns(len(selected_options_multiselect))
+           for idx,state in enumerate(selected_options_multiselect):
+               with cols[idx]:
+                   data=df[df["State name"]==state][["District code","District name","State name",sub_category]]
+                   fig=px.sunburst(data,path=["State name","District name"],values=sub_category,color_discrete_map="vividis",title=f"sunburst graph for {sub_category}",subtitle=f"{state.lower()} and its Districts")
+                   st.plotly_chart(fig, use_container_width=True)
+                   data1=data.sort_values(by=sub_category,ascending=False,ignore_index=True)[["District name",sub_category]].head(1)
+                   data2=data.sort_values(by=sub_category,ignore_index=True)[["District name",sub_category]].head(1).head(1)
+                   st.write(f"Districts with highest and lowest **{sub_category}** for the city **{state}**")
+                   st.subheader("Highest:")
+                   st.dataframe(data1)
+                   st.subheader("Lowest:")
+                   st.dataframe(data2)
 if button3:
     st.session_state.show_landing = True
 if button1:
-    if selected_state=="All":
-        
-        data=df.groupby("District name")[sub_category].sum().reset_index()
-        data=data.merge(df,on=["District name",sub_category])[["State name","District name",sub_category,"District code","Latitude","Longitude"]]
+    
+    if selected_state=="ALL":
+        st.subheader("Data is based on 2011 census")
+        data=df.groupby(["State name", "District name", "District code", "Latitude", "Longitude"])[sub_category].sum().reset_index()
+        # data=data.merge(df,on=["District name",sub_category])[["State name","District name",sub_category,"District code","Latitude","Longitude"]]
         st.subheader(f"Top 5 districts with highest {sub_category}")
         st.dataframe(data.sort_values(by=sub_category,ascending=False).head())
-        
-        fig=px.scatter_mapbox(data,lat="Latitude",lon="Longitude",size=sub_category,color="District name",zoom=3,mapbox_style="open-street-map",width=1000,hover_name="State name",title=f"Size of marker depends on the count of {sub_category} in each districts")
+        # st.dataframe(data)
+        fig=px.scatter_mapbox(data,lat="Latitude",lon="Longitude",size=sub_category,color="State name",zoom=3,mapbox_style="open-street-map",width=1000,hover_name="District name",title=f"Size of marker depends on the count of {sub_category} in each districts")
         st.plotly_chart(fig,use_container_width=True)
         # st.write(f"****")
-    else:
-        data=df[df["State name"]==selected_state]
+    elif selected_state=="States":
+        data=df[df["State name"]==state_select]
         data=data[["District code","State name","District name",sub_category,"Latitude","Longitude"]]
         st.subheader(f"Top 5 districts with highest {sub_category}")
         st.dataframe(data.sort_values(by=sub_category,ascending=False).head())
         
         
-        fig=px.scatter_mapbox(data,lat="Latitude",lon="Longitude",size=sub_category,color="District name",zoom=6,mapbox_style="carto-positron",size_max=35,width=1000,title=f"Size of marker depends on the count of {sub_category} in {selected_state}'s each district")
+        fig=px.scatter_mapbox(data,lat="Latitude",lon="Longitude",size=sub_category,color="District name",zoom=6,mapbox_style="carto-positron",size_max=35,width=1000,title=f"Size of marker depends on the count of {sub_category} in {state_select}'s each district")
         st.plotly_chart(fig,use_container_width=True)
         # st.write(f"****")
 if button2:
-    if selected_state=="All":
+    if selected_state=="ALL":
+        st.subheader("Data is based on 2011 census")
         temp=df.groupby(["State name","District name"])[sub_category].sum().reset_index()
 
        
@@ -196,9 +234,9 @@ if button2:
                 insidetextorientation='radial',
                 maxdepth=2,
                 marker=dict(
-            colors=temp[sub_category],    # use values as color
-            colorscale="cividis",          # choose scale: Viridis, Blues, Reds, Rainbow etc.
-            showscale=True 
+            colors=temp["State name"],    # use values as color
+            # colorscale="cividis",          # choose scale: Viridis, Blues, Reds, Rainbow etc.
+            # showscale=True 
             )
                 ))
 
@@ -211,15 +249,21 @@ if button2:
                 margin = dict(t=0, l=0, r=0, b=0)
             )
             st.plotly_chart(fig, use_container_width=True) 
-            
-        with col1:
             st.subheader("for better visiblity of each states and their respective districts:")
             st.markdown("-click and unclick on the states")
-            st.markdown(f"-color on the district closer to color scale shows increase in  {sub_category}")
-    else:
+            
+        with col1:
+            
+            
+            st.subheader(f"highest {sub_category} in each state")
+            show=df.groupby(["State name","District name"])[sub_category].sum().reset_index().sort_values(by=[sub_category],ascending=False).drop_duplicates(subset=["State name"],ignore_index=True)
+            st.dataframe(show)
+           
+            # st.markdown(f"-color on the district closer to color scale shows increase in  {sub_category}")
+    elif selected_state=="States":
         st.title("Data is based on 2011 Census")
         col1,col2=st.columns([1,2])
-        data=df[df["State name"]==selected_state][["District code","District name","State name",sub_category,]]
+        data=df[df["State name"]==state_select][["District code","District name","State name",sub_category,]]
         with col1:
             
             fig=px.sunburst(data,path=["State name","District name"],values=sub_category,color_discrete_map="vividis",title=f"sunburst graph for {sub_category}",subtitle=f"{selected_state.lower()} and its Districts")
@@ -229,7 +273,7 @@ if button2:
         with col2:
             data1=data.sort_values(by=sub_category,ascending=False).head(1)
             data2=data.sort_values(by=sub_category).head(1)
-            st.write(f"Districts with highest and lowest **{sub_category}** for the city **{selected_state}**")
+            st.write(f"Districts with highest and lowest **{sub_category}** for the city **{state_select}**")
             st.subheader("Highest:")
             st.dataframe(data1)
             st.subheader("Lowest:")
