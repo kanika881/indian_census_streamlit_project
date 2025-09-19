@@ -156,7 +156,9 @@ if button1:
                     data=df[df["State name"]==state]
                     data=data[["District code","State name","District name",sub_category,"Latitude","Longitude"]]
                     st.subheader(f"Top 5 districts with highest {sub_category} in {state}")
-                    st.dataframe(data.sort_values(by=sub_category,ascending=False,ignore_index=True)[["State name","District name",sub_category]].head())
+                    temp=data.sort_values(by=sub_category,ascending=False,ignore_index=True)[["State name","District name",sub_category]].head()
+                    temp.index+=1
+                    st.dataframe(temp)
                     fig=px.scatter_mapbox(data,lat="Latitude",lon="Longitude",size=sub_category,color="District name",zoom=6,mapbox_style="carto-positron",size_max=10,width=500,title=f"Size of marker depends on the count of {sub_category} in {state}'s each district")
                     st.plotly_chart(fig,use_container_width=True)
             
@@ -171,7 +173,9 @@ if button2:
                    fig=px.sunburst(data,path=["State name","District name"],values=sub_category,color_discrete_map="vividis",title=f"sunburst graph for {sub_category}",subtitle=f"{state.lower()} and its Districts")
                    st.plotly_chart(fig, use_container_width=True)
                    data1=data.sort_values(by=sub_category,ascending=False,ignore_index=True)[["District name",sub_category]].head(1)
+                   data1.index+=1
                    data2=data.sort_values(by=sub_category,ignore_index=True)[["District name",sub_category]].head(1).head(1)
+                   data2.index+=1
                    st.write(f"Districts with highest and lowest **{sub_category}** for the city **{state}**")
                    st.subheader("Highest:")
                    st.dataframe(data1)
@@ -183,19 +187,23 @@ if button1:
     
     if selected_state=="ALL":
         st.subheader("Data is based on 2011 census")
-        data=df.groupby(["State name", "District name", "District code", "Latitude", "Longitude"])[sub_category].sum().reset_index()
+        data=df.groupby(["State name", "District name", "Latitude", "Longitude"])[sub_category].sum().reset_index()
         # data=data.merge(df,on=["District name",sub_category])[["State name","District name",sub_category,"District code","Latitude","Longitude"]]
         st.subheader(f"Top 5 districts with highest {sub_category}")
-        st.dataframe(data.sort_values(by=sub_category,ascending=False).head())
+        temp=data.sort_values(by=sub_category,ascending=False,ignore_index=True).head()
+        temp.index+=1
+        st.dataframe(temp)
         # st.dataframe(data)
         fig=px.scatter_mapbox(data,lat="Latitude",lon="Longitude",size=sub_category,color="State name",zoom=3,mapbox_style="open-street-map",width=1000,hover_name="District name",title=f"Size of marker depends on the count of {sub_category} in each districts")
         st.plotly_chart(fig,use_container_width=True)
         # st.write(f"****")
     elif selected_state=="States":
         data=df[df["State name"]==state_select]
-        data=data[["District code","State name","District name",sub_category,"Latitude","Longitude"]]
+        data=data[["State name","District name",sub_category,"Latitude","Longitude"]]
         st.subheader(f"Top 5 districts with highest {sub_category}")
-        st.dataframe(data.sort_values(by=sub_category,ascending=False).head())
+        temp=data.sort_values(by=sub_category,ascending=False,ignore_index=True)[["State name","District name",sub_category]].head()
+        temp.index+=1
+        st.dataframe(temp)
         
         
         fig=px.scatter_mapbox(data,lat="Latitude",lon="Longitude",size=sub_category,color="District name",zoom=6,mapbox_style="carto-positron",size_max=35,width=1000,title=f"Size of marker depends on the count of {sub_category} in {state_select}'s each district")
@@ -257,6 +265,7 @@ if button2:
             
             st.subheader(f"highest {sub_category} in each state")
             show=df.groupby(["State name","District name"])[sub_category].sum().reset_index().sort_values(by=[sub_category],ascending=False).drop_duplicates(subset=["State name"],ignore_index=True)
+            show.index+=1
             st.dataframe(show)
            
             # st.markdown(f"-color on the district closer to color scale shows increase in  {sub_category}")
@@ -271,8 +280,10 @@ if button2:
             # st.write()
             
         with col2:
-            data1=data.sort_values(by=sub_category,ascending=False).head(1)
-            data2=data.sort_values(by=sub_category).head(1)
+            data1=data.sort_values(by=sub_category,ascending=False,ignore_index=True).head(1)
+            data1.index+=1
+            data2=data.sort_values(by=sub_category,ignore_index=True).head(1)
+            data2.index+=1
             st.write(f"Districts with highest and lowest **{sub_category}** for the city **{state_select}**")
             st.subheader("Highest:")
             st.dataframe(data1)
